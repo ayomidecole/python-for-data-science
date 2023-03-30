@@ -1,0 +1,88 @@
+import codecademylib3
+import pandas as pd
+
+ad_clicks = pd.read_csv('ad_clicks.csv')
+
+#print(ad_clicks.head())
+
+#checking to see which ad platform got the most views
+platformviews = ad_clicks.groupby('utm_source').user_id.count().reset_index()
+
+#print(platformviews)
+
+ad_clicks['is_click'] = ~ad_clicks.ad_click_timestamp.isnull()
+
+#checking the percent of people who clciked on ads from each source
+clicks_by_source = ad_clicks.groupby(['utm_source', 'is_click']).user_id.count().reset_index()
+
+#print(clicks_by_source)
+
+#using a pivot table for more clarity, it also shows us the ratio by ad
+clicks_pivot = clicks_by_source.pivot(
+  columns='is_click',
+  index='utm_source',
+  values='user_id'
+)
+
+#print(clicks_pivot)
+
+#checking the ratio of clicks per source
+clicks_pivot['percent_clicked'] = clicks_pivot[True]/(clicks_pivot[True]+clicks_pivot[False])
+
+#print(clicks_pivot)
+
+#Using this to check how many people were shown ad A or B to make sure they are equal. added in group by is_click afterwards to see which had a greater percentage
+experimental_count = ad_clicks.groupby(['experimental_group', 'is_click']).user_id.count().reset_index()
+
+#print(experimental_count)
+
+#pivot table for clarity
+experimental_count_pivot = experimental_count.pivot(
+  columns='is_click',
+  index='experimental_group',
+  values='user_id'
+).reset_index()
+
+#adding in a percentage to this table to see which experimental group of the A/B test had the higher click through rate
+experimental_count_pivot['percent_clicked'] = experimental_count_pivot.apply(lambda experimental_group: experimental_group[True]/(experimental_group[True] + experimental_group[False]), axis=1)
+
+#print(experimental_count_pivot)
+ 
+# checking for the PM to see if clicks change by the day of the week. We start by creating 2 dataframes a_clicks and b_clicks which contain the results for A and B respectively
+
+a_clicks = ad_clicks[ad_clicks.experimental_group == 'A']
+
+#print(a_clicks)
+
+b_clicks = ad_clicks[ad_clicks.experimental_group == 'B']
+
+#print(b_clicks)
+
+#for each group we are going to check the percentage that clicks per day for both A and B
+a_clicks_per_day = a_clicks.groupby(['is_click', 'day']).user_id.count().reset_index()
+
+a_clicks_per_day_pivot = a_clicks_per_day.pivot(
+  columns='is_click',
+  index='day',
+  values='user_id'
+).reset_index()
+
+#also adding in percentage clicks per day
+a_clicks_per_day_pivot['percent_clicked'] = a_clicks_per_day_pivot.apply(lambda day: day[True]/(day[True] + day[False]), axis=1)
+print(a_clicks_per_day_pivot)
+
+#and for b
+b_clicks_per_day = b_clicks.groupby(['is_click', 'day']).user_id.count().reset_index()
+
+b_clicks_per_day_pivot = b_clicks_per_day.pivot(
+  columns='is_click',
+  index='day',
+  values='user_id'
+).reset_index()
+
+#percent clicked for b
+b_clicks_per_day_pivot['percent_clicked'] = b_clicks_per_day_pivot.apply(lambda day: day[True]/(day[True] + day[False]), axis=1)
+
+print(b_clicks_per_day_pivot)
+
+#From the infor we have it would make sense for the company to use Ad A as it has a higher clickthrough rate for 6 out of the 7 days
